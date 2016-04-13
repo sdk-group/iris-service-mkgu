@@ -1,7 +1,6 @@
 'use strict'
 
 let Mkgu = require("./Mkgu/mkgu");
-let config = require("./config/db_config.json");
 
 describe("Mkgu service", () => {
 	let service = null;
