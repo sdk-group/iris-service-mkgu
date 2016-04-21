@@ -3,6 +3,8 @@
 let request = require('request-promise');
 let fs = Promise.promisifyAll(require("fs"));
 let xmldom = require('xmldom');
+let select = require('xml-crypto')
+	.xpath;
 let SignedXml = require('xml-crypto')
 	.SignedXml;
 
@@ -32,40 +34,43 @@ class Mkgu {
 	}
 
 	launch() {
+		this.emitter.on('mkgu.send.rates', (data) => this.postRates(data));
+		return Promise.resolve(true);
+	}
+
+	//API
+	postRates({
+		organization,
+		service,
+		ticket
+	}) {
+		// console.log("POST RATES", organization, service, ticket);
 		let msg = this.messageRates({
-			user: 0,
-			vendor: '1417-13',
-			service: 666,
-			authority: 999,
-			okato: 555,
-			service_date: moment()
+			user: ticket.id,
+			vendor: organization.mkgu_code,
+			service: service.code_frgu,
+			service_name: service.label,
+			authority: service.dept_code_frgu,
+			procedure: service.procedure_code_frgu,
+			okato: organization.okato,
+			service_date: moment.tz(organization.org_timezone)
 				.subtract(1, 'day')
 				.format('YYYY-MM-DD HH:MM:SS'),
-			rate_date: moment()
+			rate_date: moment.tz(organization.org_timezone)
 				.format('YYYY-MM-DD HH:MM:SS'),
-			user_info: {
-				email: 'tst@tst.com'
-			},
-			rates: {
-				"question-1": "excellent",
-				"question-2": "excellent",
-				"question-3": "excellent",
-				"question-4": "excellent",
-				"question-5": "excellent"
-			}
+			user_info: ticket.user_info,
+			rates: ticket.qa_answers
 		});
 		console.log(msg);
-		return this.post(ns_rates_sb, msg)
+		return this.post(ns_rates, msg)
 			.then((res) => {
 				console.log("RESPONSE", res);
-				return Promise.resolve(true);
 			})
 			.catch((err) => {
 				console.log("ERR", err);
 			});
 	}
 
-	//API
 	post(uri, data) {
 		let options = {
 			uri,
@@ -79,24 +84,23 @@ class Mkgu {
 	}
 
 	messageRates({
-		authority,
-		service,
-		service_date,
-		rate_date,
-		okato,
-		vendor,
-		user,
-		user_info = {},
-			rates = {},
-			params = []
+		authority, authority_name = '',
+			service, service_name = '',
+			procedure, procedure_name = '',
+			service_date, rate_date,
+			okato,
+			vendor,
+			user,
+			user_info = {},
+			rates = {}
 	}) {
 		let doc = this.DOMI.createDocument();
 		let root = doc.createElementNS(ns_main, 'mkgu:body');
 
+		root.setAttribute('ID', 'mkgu');
 		root.setAttributeNS(ns_w3, 'xmlns:mkgu', ns_main);
 		root.setAttributeNS(ns_w3, 'xmlns:ds', ns_ds);
 		root.setAttributeNS(ns_w3, 'xmlns:ec', ns_ec);
-		root.setAttribute('ID', 'mkgu');
 
 
 		let vendor_node = doc.createElement('vendor');
@@ -115,10 +119,13 @@ class Mkgu {
 
 		let data = doc.createElement('data');
 		let procedure_node = doc.createElement('procedure');
+		procedure_node.textContent = procedure_name;
 		let authority_node = doc.createElement('authority');
 		authority_node.setAttribute('id', authority);
+		authority_node.textContent = authority_name;
 		let service_node = doc.createElement('service');
 		service_node.setAttribute('id', service);
+		service_node.textContent = service_name;
 		let user_node = doc.createElement('user');
 		user_node.setAttribute('id', user);
 		if (user_info.email) {
@@ -157,17 +164,36 @@ class Mkgu {
 		form.appendChild(data);
 		form.appendChild(rates_node);
 
-		return this.sign(root);
+		return ('<?xml version="1.0" encoding="UTF-8"?>' + this.sign(root));
 	}
 
 	sign(root) {
 		let xml = this.serializer.serializeToString(root);
 
-		var sig = new SignedXml()
-		sig.addReference(".", ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"], "http://www.w3.org/2001/04/xmlenc#sha256");
+		var sig = new SignedXml();
+
+		sig.addReference("/*", ["http://www.w3.org/2000/09/xmldsig#enveloped-signature", "http://www.w3.org/2001/10/xml-exc-c14n#"], "http://www.w3.org/2001/04/xmlenc#sha256");
 		sig.signingKey = this.priv_key;
 		sig.signatureAlgorithm = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
-		sig.computeSignature(xml)
+		sig.computeSignature(xml);
+
+		// sig.loadSignature(`<ds:Signature>
+		//   <ds:SignedInfo>
+		//     <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+		//     <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
+		//     <ds:Reference URI="#mkgu">
+		//       <ds:Transforms>
+		//         <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
+		//         <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+		//           <ec:InclusiveNamespaces PrefixList="mkgu"/>
+		//         </ds:Transform>
+		//       </ds:Transforms>
+		//       <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+		//       <ds:DigestValue></ds:DigestValue>
+		//     </ds:Reference>
+		//   </ds:SignedInfo>
+		//   <ds:SignatureValue></ds:SignatureValue>
+		// </ds:Signature>`);
 		return sig.getSignedXml();
 	}
 }
