@@ -56,8 +56,7 @@ class Mkgu {
 			authority: service.dept_code_frgu,
 			procedure: service.procedure_code_frgu,
 			okato: organization.okato,
-			service_date: moment.tz(organization.org_timezone)
-				.subtract(1, 'day')
+			service_date: moment(ticket.dedicated_date, organization.org_timezone)
 				.format('YYYY-MM-DD HH:MM:SS'),
 			rate_date: moment.tz(organization.org_timezone)
 				.format('YYYY-MM-DD HH:MM:SS'),
@@ -93,7 +92,7 @@ class Mkgu {
 		curl.setOpt( Curl.option.HTTPHEADER,  ['Content-Type: application/xml']);
 		curl.setOpt( Curl.option.SSL_VERIFYPEER,  false);
 
-		return new Promise((resolve, reject) => {
+		return new Promise(function(resolve, reject){
 			curl.on( 'end', function( statusCode, body, headers ) {
 				this.close();
 				resolve(body);
