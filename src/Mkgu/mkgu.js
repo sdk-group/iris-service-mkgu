@@ -1,5 +1,7 @@
 'use strict'
 
+let Curl = require( 'node-libcurl' ).Curl;
+
 let request = require('request-promise');
 let fs = Promise.promisifyAll(require("fs"));
 let xmldom = require('xmldom');
@@ -16,6 +18,7 @@ const ns_events = 'https://vashkontrol.ru/hershel/events.json';
 const ns_events_sb = 'https://vashkontrol.ru/hershel/sandbox/events.json';
 const ns_rates = 'https://vashkontrol.ru/hershel/rates.json';
 const ns_rates_sb = 'https://vashkontrol.ru/hershel/sandbox/rates.json';
+
 
 class Mkgu {
 	constructor() {
@@ -72,16 +75,36 @@ class Mkgu {
 	}
 
 	post(uri, data) {
-		let options = {
-			uri,
-			headers: {
-					'Content-Type': 'application/xml'
-				},
-			body: data,
-			strictSSL: false
-		};
+		// let options = {
+		// 	uri,
+		// 	headers: {
+		// 			'Content-Type': 'application/xml'
+		// 		},
+		// 	body: data,
+		// 	strictSSL: false
+		// };
 
-		return request.post(options);
+		// return request.post(options);
+
+		let curl = new Curl();
+		curl.setOpt( Curl.option.URL, uri);
+		curl.setOpt( Curl.option.POST, true );
+		curl.setOpt( Curl.option.POSTFIELDS, data );
+		curl.setOpt( Curl.option.HTTPHEADER,  ['Content-Type: application/xml']);
+		curl.setOpt( Curl.option.SSL_VERIFYPEER,  false);
+
+		return new Promise((resolve, reject) => {
+			curl.on( 'end', function( statusCode, body, headers ) {
+				this.close();
+				resolve(body);
+			});
+
+			curl.on( 'error', function(err){
+				curl.close.bind( curl );
+				reject(err);
+			});
+			curl.perform();
+		});
 	}
 
 	messageRates({
