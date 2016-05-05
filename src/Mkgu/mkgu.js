@@ -77,7 +77,8 @@ class Mkgu {
 			headers: {
 					'Content-Type': 'application/xml'
 				},
-				body: data
+			body: data,
+			strictSSL: false
 		};
 
 		return request.post(options);
