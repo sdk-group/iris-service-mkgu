@@ -56,10 +56,8 @@ class Mkgu {
 			authority: service.dept_code_frgu,
 			procedure: service.procedure_code_frgu,
 			okato: organization.okato,
-			service_date: moment(ticket.dedicated_date, organization.org_timezone)
-				.format('YYYY-MM-DD HH:MM:SS'),
-			rate_date: moment.tz(organization.org_timezone)
-				.format('YYYY-MM-DD HH:MM:SS'),
+			service_date: moment(ticket.dedicated_date, "YYYY-MM-DD").tz(organization.org_timezone).utc().format('YYYY-MM-DD HH:mm:ss'),
+			rate_date: moment.tz(organization.org_timezone).startOf('day').utc().format('YYYY-MM-DD HH:mm:ss'),
 			user_info: ticket.user_info,
 			rates: ticket.qa_answers
 		});
