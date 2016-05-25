@@ -1,6 +1,7 @@
 'use strict'
 
-let Curl = require( 'node-libcurl' ).Curl;
+let Curl = require('node-libcurl')
+	.Curl;
 
 let request = require('request-promise');
 let fs = Promise.promisifyAll(require("fs"));
@@ -37,7 +38,7 @@ class Mkgu {
 	}
 
 	launch() {
-		this.emitter.on('mkgu.send.rates', (data) => this.postRates(data));
+		this.emitter.listenTask('mkgu.send.rates', (data) => this.postRates(data));
 		return Promise.resolve(true);
 	}
 
@@ -56,8 +57,14 @@ class Mkgu {
 			authority: service.dept_code_frgu,
 			procedure: service.procedure_code_frgu,
 			okato: organization.okato,
-			service_date: moment(ticket.dedicated_date, "YYYY-MM-DD").tz(organization.org_timezone).utc().format('YYYY-MM-DD HH:mm:ss'),
-			rate_date: moment.tz(organization.org_timezone).startOf('day').utc().format('YYYY-MM-DD HH:mm:ss'),
+			service_date: moment(ticket.dedicated_date, "YYYY-MM-DD")
+				.tz(organization.org_timezone)
+				.utc()
+				.format('YYYY-MM-DD HH:mm:ss'),
+			rate_date: moment.tz(organization.org_timezone)
+				.startOf('day')
+				.utc()
+				.format('YYYY-MM-DD HH:mm:ss'),
 			user_info: ticket.user_info,
 			rates: ticket.qa_answers
 		});
@@ -84,20 +91,20 @@ class Mkgu {
 		// return request.post(options);
 
 		let curl = new Curl();
-		curl.setOpt( Curl.option.URL, uri);
-		curl.setOpt( Curl.option.POST, true );
-		curl.setOpt( Curl.option.POSTFIELDS, data );
-		curl.setOpt( Curl.option.HTTPHEADER,  ['Content-Type: application/xml']);
-		curl.setOpt( Curl.option.SSL_VERIFYPEER,  false);
+		curl.setOpt(Curl.option.URL, uri);
+		curl.setOpt(Curl.option.POST, true);
+		curl.setOpt(Curl.option.POSTFIELDS, data);
+		curl.setOpt(Curl.option.HTTPHEADER, ['Content-Type: application/xml']);
+		curl.setOpt(Curl.option.SSL_VERIFYPEER, false);
 
-		return new Promise(function(resolve, reject){
-			curl.on( 'end', function( statusCode, body, headers ) {
+		return new Promise(function (resolve, reject) {
+			curl.on('end', function (statusCode, body, headers) {
 				this.close();
 				resolve(body);
 			});
 
-			curl.on( 'error', function(err){
-				curl.close.bind( curl );
+			curl.on('error', function (err) {
+				curl.close.bind(curl);
 				reject(err);
 			});
 			curl.perform();
@@ -105,15 +112,19 @@ class Mkgu {
 	}
 
 	messageRates({
-		authority, authority_name = '',
-			service, service_name = '',
-			procedure, procedure_name = '',
-			service_date, rate_date,
-			okato,
-			vendor,
-			user,
-			user_info = {},
-			rates = {}
+		authority,
+		authority_name = '',
+		service,
+		service_name = '',
+		procedure,
+		procedure_name = '',
+		service_date,
+		rate_date,
+		okato,
+		vendor,
+		user,
+		user_info = {},
+		rates = {}
 	}) {
 		let doc = this.DOMI.createDocument();
 		let root = doc.createElementNS(ns_main, 'mkgu:body');
