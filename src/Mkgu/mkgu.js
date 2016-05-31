@@ -30,16 +30,23 @@ class Mkgu {
 		this.certificate_pub = cfg.certificate_pub || './keys/cert.pem';
 		this.certificate_priv = cfg.certificate_priv || './keys/key.pem';
 
-		this.pub_key = fs.readFileSync(this.certificate_pub);
-		this.priv_key = fs.readFileSync(this.certificate_priv);
-
 		this.serializer = new xmldom.XMLSerializer();
 		this.DOMI = new xmldom.DOMImplementation();
 	}
 
 	launch() {
 		this.emitter.listenTask('mkgu.send.rates', (data) => this.postRates(data));
-		return Promise.resolve(true);
+
+		return Promise.all([fs.readFileAsync(this.certificate_pub), fs.readFileAsync(this.certificate_priv)])
+			.then(([pub, priv]) => {
+				this.pub_key = pub;
+				this.priv_key = priv;
+				return true;
+			})
+			.catch((err) => {
+				console.log("MKGU LAUNCH ERR", err.message);
+				return true;
+			});
 	}
 
 	//API
@@ -209,23 +216,6 @@ class Mkgu {
 		sig.signatureAlgorithm = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256";
 		sig.computeSignature(xml);
 
-		// sig.loadSignature(`<ds:Signature>
-		//   <ds:SignedInfo>
-		//     <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
-		//     <ds:SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"/>
-		//     <ds:Reference URI="#mkgu">
-		//       <ds:Transforms>
-		//         <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
-		//         <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
-		//           <ec:InclusiveNamespaces PrefixList="mkgu"/>
-		//         </ds:Transform>
-		//       </ds:Transforms>
-		//       <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
-		//       <ds:DigestValue></ds:DigestValue>
-		//     </ds:Reference>
-		//   </ds:SignedInfo>
-		//   <ds:SignatureValue></ds:SignatureValue>
-		// </ds:Signature>`);
 		return sig.getSignedXml();
 	}
 }
