@@ -45,7 +45,7 @@ class Mkgu {
 			})
 			.catch((err) => {
 				console.log("MKGU LAUNCH ERR", err.message);
-				return true;
+				return false;
 			});
 	}
 
