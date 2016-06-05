@@ -81,6 +81,11 @@ class Mkgu {
 				console.log("RESPONSE", res);
 			})
 			.catch((err) => {
+				global.logger && logger.error(
+					err, {
+						module: 'mkgu',
+						method: 'post-rates'
+					});
 				console.log("ERR", err);
 			});
 	}
