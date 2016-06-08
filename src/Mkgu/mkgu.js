@@ -1,10 +1,22 @@
 'use strict'
 
+let bunyan = require('bunyan');
+let mkgulogger = bunyan.createLogger({
+	name: 'iris-v2',
+	streams: [{
+		level: 'info',
+		type: 'rotating-file',
+		path: './logs/mkgu/iris.log',
+		period: '1d'
+  }]
+});
+
 let Curl = require('node-libcurl')
 	.Curl;
-
 let request = require('request-promise');
+
 let fs = Promise.promisifyAll(require("fs"));
+
 let xmldom = require('xmldom');
 let select = require('xml-crypto')
 	.xpath;
@@ -75,22 +87,17 @@ class Mkgu {
 			user_info: ticket.user_info,
 			rates: ticket.qa_answers
 		});
-		console.log(msg);
-		return this.post(ns_rates, msg)
-			.then((res) => {
-				console.log("RESPONSE", res);
-			})
+		return this.post(ns_rates, msg, _.get(organization, 'logs.mkgu', false))
 			.catch((err) => {
 				global.logger && logger.error(
 					err, {
 						module: 'mkgu',
 						method: 'post-rates'
 					});
-				console.log("ERR", err);
 			});
 	}
 
-	post(uri, data) {
+	post(uri, data, log) {
 		// let options = {
 		// 	uri,
 		// 	headers: {
@@ -98,7 +105,7 @@ class Mkgu {
 		// 		},
 		// 	body: data,
 		// 	strictSSL: false
-		// };
+		// };queue
 
 		// return request.post(options);
 
@@ -111,11 +118,22 @@ class Mkgu {
 
 		return new Promise(function (resolve, reject) {
 			curl.on('end', function (statusCode, body, headers) {
+				let code = _.parseInt(_.join(_.slice(body, 13, _.size(body) - 1), ''));
+				if (log || !_.isFinite(code) || !_.isNumber(code)) {
+					mkgulogger.info({
+						statusCode,
+						body,
+						headers,
+						data
+					});
+				}
 				this.close();
 				resolve(body);
 			});
 
 			curl.on('error', function (err) {
+				mkgulogger.error(err);
+				mkgulogger.info('Lost packet', data);
 				curl.close.bind(curl);
 				reject(err);
 			});
