@@ -8,7 +8,7 @@ let mkgulogger = bunyan.createLogger({
 		type: 'rotating-file',
 		path: './logs/mkgu/iris.log',
 		period: '1d'
-  }]
+	}]
 });
 
 let Curl = require('node-libcurl')
@@ -81,7 +81,6 @@ class Mkgu {
 				.utc()
 				.format('YYYY-MM-DD HH:mm:ss'),
 			rate_date: moment.tz(organization.org_timezone)
-				.startOf('day')
 				.utc()
 				.format('YYYY-MM-DD HH:mm:ss'),
 			user_info: ticket.user_info,
